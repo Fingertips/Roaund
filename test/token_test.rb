@@ -22,7 +22,6 @@ class ATokenTest < Test::Unit::TestCase
   
   test "loads token and secret from a serialized form" do
     dumped = Roaund::Token.dump(@example)
-    
     output = Roaund::Token.new
     output.load(dumped)
     
@@ -32,12 +31,5 @@ class ATokenTest < Test::Unit::TestCase
   
   test "dumps token to a serialized form" do
     assert_equal Roaund::Token.dump(@example), @example.dump
-  end
-  
-  test "parses its attributes from serialized GET parameters" do
-    example = Roaund::Token.new
-    example.parse('oauth_token=requestkey&oauth_token_secret=requestsecret')
-    assert_equal 'requestkey', example.token
-    assert_equal 'requestsecret', example.secret
   end
 end

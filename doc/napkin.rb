@@ -10,6 +10,6 @@ token.secret
 
 # If you need to store the token for the next request, do it like so:
 token.dump # Token.dump(token)
-Token.load() # (Token.new.load)
+Token.load('oauth_token=requestkey&oauth_token_secret=requestsecret') # (Token.new.load('oauth_token=requestkey&oauth_token_secret=requestsecret'))
 
 REST.get('http://example.com/members', token.headers.merge('Accept' => 'application/json'))

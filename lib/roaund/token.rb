@@ -8,17 +8,18 @@ class Roaund
       @token, @secret, @client = token, secret, client
     end
     
-    def parse(input)
+    def load(input)
       params = CGI.parse(input)
       @token, @secret = params['oauth_token'].first, params['oauth_token_secret'].first
     end
     
-    def load(input)
-      @token, @secret = Marshal.load(input)
-    end
-    
     def dump
-      Marshal.dump([token, secret])
+      [
+        ['oauth_token',        @token],
+        ['oauth_token_secret', @secret]
+      ].inject([]) do |parts, (key, value)|
+        parts << "#{CGI.escape(key)}=#{CGI.escape(value)}"
+      end.join('&')
     end
     
     def self.dump(token)
