@@ -1,14 +1,15 @@
-# Getting an authentication token for a single request or limited amount of requests.
-request = Roaund.request_token(:consumer_key => "sf34", :consumer_token => 'jh34', :send_to_url => 'http://consumer.example.com/token')
-request.redirect_url = 'http://provider.example.com/oauth'
+# Authorizing the consumer for access to the service
+roaund = Roaund.new(:consumer_key => "sf34", :consumer_token => 'jh34')
+request = roaund.authorize(:callback => 'http://consumer.example.com/complete')
+request.redirect_url #=> 'http://provider.example.com/authorize?oauth_token=afer'
 
-# When hit on /token:
-token = Roaund::Token.with_params('oauth_token=requestkey&oauth_token_secret=requestsecret')
+# When hit on http://consumer.example.com/complete with a secret token
+token = roaund.token('oauth_token=requestkey&oauth_token_secret=requestsecret')
 token.key # token.to_s
 token.secret
 
-# Getting an authentication token for access over a longer period of time.
-request = Roaund.access_token(:consumer_key => "sf34", :consumer_token => 'jh34')
-# Rest is the same as with request token
+# If you need to store the token for the next request, do it like so:
+token.dump # Token.dump(token)
+Token.load() # (Token.new.load)
 
-RESTWithOauth.get(token, 'http://example.com/members.json', { 'Accept' => 'application/json' })
+REST.get('http://example.com/members', token.headers.merge('Accept' => 'application/json'))
