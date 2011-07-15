@@ -18,7 +18,6 @@ class Roaund
   end
   
   def initiate
-    p authorization
     response = REST.post(self.class.temporary_credential_request_url, nil, {
       'Authorization' => authorization
     })
