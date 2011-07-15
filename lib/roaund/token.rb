@@ -1,5 +1,3 @@
-require 'cgi'
-
 class Roaund
   class Token
     attr_accessor :token, :secret, :client

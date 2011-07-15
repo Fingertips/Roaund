@@ -6,6 +6,8 @@ gem 'nap'
 $:.unshift File.expand_path('../../lib', __FILE__)
 require 'roaund'
 
+require 'mocha'
+
 class Test::Unit::TestCase
   def self._description_to_name(description)
     "test_#{description.gsub(' ', '_')}"
