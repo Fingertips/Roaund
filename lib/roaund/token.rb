@@ -12,12 +12,16 @@ class Roaund
     end
     
     def dump
-      [
+      _pairs_to_query_part([
         ['oauth_token',        @token],
         ['oauth_token_secret', @secret]
-      ].inject([]) do |parts, (key, value)|
-        parts << "#{CGI.escape(key)}=#{CGI.escape(value)}"
-      end.join('&')
+      ])
+    end
+    
+    def _pairs_to_query_part(pairs)
+      encoded = []; for (key, value) in pairs
+        encoded << "#{CGI.escape(key)}=#{CGI.escape(value||'')}"
+      end; encoded.join('&')
     end
     
     def self.dump(token)
