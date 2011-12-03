@@ -1,68 +1,65 @@
-require 'cgi'
-require 'rest'
+require 'logger'
+require 'roaund/errors'
 
 class Roaund
-  autoload :Token, 'roaund/token'
+  autoload :ControllerProxy, 'roaund/controller_proxy'
+  autoload :Headers,         'roaund/headers'
+  autoload :Lint,            'roaund/lint'
+  autoload :Proxy,           'roaund/proxy'
+  autoload :Signature,       'roaund/signature'
+  autoload :NonceStore,      'roaund/nonce_store'
+  autoload :URI,             'roaund/uri'
   
   class << self
-    attr_accessor :temporary_credential_request_url,
-                  :resource_owner_authorization_url,
-                  :token_request_url
+    # A logger instance
+    attr_accessor :logger
+    
+    # An object responding to #store(nonce) and #exist?(none)
+    # to test if nonces passed by clients are unqiue.
+    attr_accessor :nonce_store
+    
+    # When using strict mode OAuth requests are checked more
+    # strictly. For example: nonce and timestamp values have
+    # to be valid.
+    attr_writer :strict
   end
   
-  attr_accessor :consumer_key,
-                :consumer_token,
-                :temporary_token
+  self.logger = Logger.new($stderr)
+  self.logger.level = Logger::DEBUG
+  self.strict = false
+  self.nonce_store = Roaund::NonceStore
   
-  def initialize(config)
-    @consumer_key, @consumer_token = config[:consumer_key], config[:consumer_token]
+  # Returns true when running in strict mode
+  def self.strict?
+    @strict
   end
   
-  def initiate
-    response = REST.post(self.class.temporary_credential_request_url, nil, {
-      'Authorization' => authorization
-    })
-    if response.ok?
-      @temporary_token = Roaund::Token.load(response.body)
-      @temporary_token.client = self
-    end
+  def self.nonce
+    Digest::SHA1.hexdigest(
+      [Time.now, Process.pid, object_id, rand].join('---')
+    ).to_i(16).to_s(36)
   end
   
-  def signature_base
-    [
-      request.method,
-      request.host,
-      request.path_and_query,
-      authorization_as_hash.except('oauth_signature'),
-      request.body_params
-    ].map { |part| CGI.escape(part) }.join('&')
+  def self.plaintext_authorization(realm, params, consumer_secret, token_secret='')
+    params = {
+      'oauth_signature_method' => 'PLAINTEXT',
+      'oauth_signature' => Roaund::Signature.key(consumer_secret, token_secret)
+    }.merge(params)
+    Roaund::Headers.generate_authorization(realm, params)
   end
   
-  def authorization_as_hash
-    authorization_as_hash = {
-      'oauth_consumer_key' => @consumer_key,
+  def self.hmac_sha1_authorization(realm, request_method, url, params, consumer_secret, token_secret='')
+    params = {
       'oauth_signature_method' => 'HMAC-SHA1',
-    }
-    if temporary_token
-      authorization_as_hash['oauth_token'] = temporary_token.token
-    end
-    authorization_as_hash
+      'oauth_timestamp' => Time.now.to_i.to_s,
+      'oauth_nonce' => nonce
+    }.merge(params)
+    signature = Roaund::Signature.new(request_method, url, params)
+    params['oauth_signature'] = signature.compute_hmac_sha1_signature(consumer_secret, token_secret)
+    Roaund::Headers.generate_authorization(realm, params)
   end
   
-  def authorization
-    "Oauth #{_pairs_to_header_options(authorization_as_hash.merge('Realm' => @realm))}"
-  end
-  
-  def token(params_as_string)
-    token = Roaund::Token.new
-    token.client = self
-    token.parse(params_as_string)
-    token
-  end
-  
-  def _pairs_to_header_options(pairs)
-    encoded = []; for (key, value) in pairs
-      encoded << "#{CGI.escape(key)}=\"#{CGI.escape(value||'')}\""
-    end; encoded.join(',')
+  def self.parse(authorization)
+    Roaund::Headers.parse_authorization(authorization)
   end
 end
